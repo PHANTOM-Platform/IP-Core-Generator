@@ -1,0 +1,34 @@
+<application xmlns="CN" name="Example Application" xsi:schemaLocation="../models/component_network.xsd">
+
+<component name="ComponentA" type="asynchronous">
+    <MBT-estimated-computation-time value="60" measurement-unit="ns"/>
+    <MF-monitored-computation-time measurement-unit="ns" value="400"/>
+
+    <requirements set-by="USER" name="componentA_requirements" target="ComponentA">
+		<non-functional name="Simons_WCET" type="execution-time" max-value="500" measurement-unit="ns"/>
+	</requirements>
+
+</component>
+
+
+<component name="ComponentB" type="asynchronous">
+    <MBT-estimated-computation-time value="80" measurement-unit="ns"/>
+    <MF-monitored-computation-time measurement-unit="ns" value="400"/>
+
+    <requirements set-by="USER" name="componentA_requirements" target="ComponentB">
+		<non-functional name="Simons_WCET" type="execution-time" max-value="500" measurement-unit="ns"/>
+	</requirements>
+
+</component>
+
+<component name="ComponentC" type="asynchronous">A
+    <MBT-estimated-computation-time value="90" measurement-unit="ns"/>
+    <MF-monitored-computation-time measurement-unit="ns" value="400"/>
+
+    <requirements set-by="USER" name="componentA_requirements" target="ComponentC">
+		<non-functional name="Simons_WCET" type="execution-time" max-value="500" measurement-unit="ns"/>
+	</requirements>
+
+</component>
+
+</application>

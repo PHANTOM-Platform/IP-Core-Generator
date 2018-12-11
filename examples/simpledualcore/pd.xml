@@ -1,0 +1,14 @@
+<platform xmlns="PD" name="Example_Platform" noNamespaceSchemaLocation="../models/platform_description.xsd">
+
+<device name="testdevice1" type="CPU">
+
+	<processing-node name="unit1" type="CPU-based">
+		<processor name="P1" type="INTELX">
+			<cpu name="CPU1"/>
+			<cpu name="CPU2"/>
+		</processor>
+	</processing-node>
+
+</device>
+
+</platform>

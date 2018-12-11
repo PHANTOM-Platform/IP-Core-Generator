@@ -1,0 +1,114 @@
+<xs:schema xmlns="DE"  targetNamespace="DE" attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+ <xs:element name="component">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute type="xs:string" name="name" use="required"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="processor">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute type="xs:string" name="name" use="required"/>
+          <xs:attribute type="xs:string" name="cpu-name" use="required"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+<xs:simpleType name="map_restrict">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="CPU"/>
+	<xs:enumeration value="GPU"/>
+	<xs:enumeration value="FPGA"/>
+	<xs:enumeration value="MOVIDIUS"/>
+  </xs:restriction>
+</xs:simpleType>
+
+  <xs:element name="mapping_restriction">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+			<xs:attribute type="map_restrict" name="target_type" use="required"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="memory">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute type="xs:string" name="name" use="required"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="comm_protocol">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute type="xs:string" name="name" use="required"/>
+          <xs:attribute type="xs:string" name="restriction" use="required"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+<xs:simpleType name="map-type">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="processing" />
+    <xs:enumeration value="communication" />
+  </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="map-persistency">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="none"/>
+	<xs:enumeration value="restricted"/>
+	<xs:enumeration value="full"/>
+  </xs:restriction>
+</xs:simpleType>
+
+<xs:element name="scheduling_param">
+  <xs:complexType>
+    <xs:sequence>
+      <xs:element name="name" type="xs:string"/>
+      <xs:element name="value" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:element>
+
+  <xs:element name="mapping">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="mapping_restriction" maxOccurs="unbounded" minOccurs="0"/>
+        <xs:element ref="component" minOccurs="1" maxOccurs="1"/>
+        <xs:element ref="processor" minOccurs="0" maxOccurs="1"/>
+		<xs:element ref="component" minOccurs="0" maxOccurs="1"/>
+        <xs:element ref="memory" minOccurs="0" maxOccurs="1"/>
+        <xs:element ref="comm_protocol" minOccurs="0" maxOccurs="1"/>
+        <xs:element ref="scheduling_param" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute type="xs:string" name="name" use="required"/>
+      <xs:attribute type="map-type" name="type" use="required"/>
+      <xs:attribute type="map-persistency" name="persistency" use="required"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="deployment">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="mapping" maxOccurs="unbounded" minOccurs="1"/>
+      </xs:sequence>
+      <xs:attribute type="xs:string" name="name" use="optional"/>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>
