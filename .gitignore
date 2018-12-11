@@ -1,3 +1,11 @@
+# PHANTOM
+_tmp
+
+# OSX
+.DS_Store
+
+# AUTO Generated Python gitignore
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
