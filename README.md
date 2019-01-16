@@ -9,7 +9,7 @@ The IP Core Generator requires a PC running Linux. It was tested on Ubuntu 16.04
 -  Xilinx Vivado tools with Zynq-7000 support (Tested with Vivado Design Suite 2016.4 and Vivado Design Suite 2017.4)
 -  Git
 -  Python3
--  Python3 module: websocket
+-  Python3 module: websocket-client
 
 #### DEPLOYMENT PROCEDURE
 The IP Core Generator needs Xilinx Vivado tools, with Zynq-7000 support, to be installed and properly configured. Vivado Design Suite comes with all the necessary tools and can be downloaded from:
@@ -31,7 +31,7 @@ Git and Python3 come pre-installed in most operating systems. If any of them is 
 
 Then the needed python modules can be installed using pip:
 
-`python3 -m pip install websocket`
+`python3 -m pip install websocket-client`
 
 All the tool files can be downloaded to the current directory using git clone:
 ```

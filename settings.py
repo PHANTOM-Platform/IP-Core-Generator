@@ -19,6 +19,7 @@ repository_pass = "12345"
 repository_user_dir = "user"
 repository_descriptions_dir = "descriptions"
 
+
 # Set the target FPGA device - ZC706 = xc7z045ffg900-2
 target_fpga = "xc7z045ffg900-2"
 
