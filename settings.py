@@ -22,6 +22,7 @@ repository_user_dir = "user"
 repository_descriptions_dir = "descriptions"
 
 
+<<<<<<< HEAD
 # Component Network Name
 cn_name = "cn.xml"
 
@@ -30,6 +31,8 @@ cn_name = "cn.xml"
 pd_name = "pd.xml"
 
 
+=======
+>>>>>>> 97b89484d1c506dffb3deed5cd6faff650a09f4a
 # Set the target FPGA device - ZC706 = xc7z045ffg900-2
 target_fpga = "xc7z045ffg900-2"
 

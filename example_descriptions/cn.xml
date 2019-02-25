@@ -30,8 +30,11 @@
         <source file="euler.cpp" lang="cpp" path="..\src\components_cuda"/>
 	<source file="euler_cuda.cpp" lang="cpp" path="..\src\components_cuda"/>
     </implementation>
+<<<<<<< HEAD
     
     <devices CPU="yes" GPU="yes" FPGA="yes"/>
+=======
+>>>>>>> 97b89484d1c506dffb3deed5cd6faff650a09f4a
 
 </component>
 

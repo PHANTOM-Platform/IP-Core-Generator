@@ -41,7 +41,7 @@ git clone https://github.com/PHANTOM-Platform/IP-Core-Generator
 
 Once everything has been installed, the tool can verify if the Xilinx tools are properly configured and accessible with:
 
-`./ipcore-generator.sh verify`
+`./ipcore-generator.py verify`
 
 ### CONFIGURATION GUIDE
 The IP Core Generator will need to know how to connect to the Repository and App Manager. For this the corresponding IP addresses and ports should be set in the file settings.py. Also, the user must input their credentials to allow the IP Core Generator to connect to the other PHANTOM modules.
