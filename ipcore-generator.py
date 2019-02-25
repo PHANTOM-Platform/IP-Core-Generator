@@ -6,6 +6,7 @@ import websocket
 from xml.dom import expatbuilder
 from repository import ANSI_RED, ANSI_GREEN, ANSI_YELLOW, ANSI_BLUE, ANSI_MAGENTA, ANSI_CYAN, ANSI_END
 
+
 # IP Core Generator Source Name
 repository_ipcoregen_source = "ipcore-generator"
 
@@ -14,18 +15,23 @@ tempdir = "_tmp/"
 generated_ipcore_dir = "generated-ipcores"
 generated_src_dir = "generated-src"
 
+# Automatically clean temporary files
+clean_temp = True;
+
 
 
 def main():
 
 	#Remove temporary directories
-	if os.path.isdir(generated_ipcore_dir):
-		shutil.rmtree(generated_ipcore_dir)
-	if os.path.isdir(generated_src_dir):
-		shutil.rmtree(generated_src_dir)	
-	if os.path.isdir(tempdir):
-		shutil.rmtree(tempdir)
-	os.mkdir(tempdir)
+	if clean_temp:
+		if os.path.isdir(generated_ipcore_dir):
+			shutil.rmtree(generated_ipcore_dir)
+		if os.path.isdir(generated_src_dir):
+			shutil.rmtree(generated_src_dir)	
+		if os.path.isdir(tempdir):
+			shutil.rmtree(tempdir)
+	if not os.path.isdir(tempdir):		
+		os.mkdir(tempdir)
 
 
 	# Usage
@@ -80,7 +86,7 @@ def main():
 			sys.exit(1)
 		inputdir = repository.enforce_trailing_slash(sys.argv[2])
 		outputdir = repository.enforce_trailing_slash(sys.argv[3])
-		local_mode(inputdir, outputdir, None, None, True)
+		local_mode(inputdir, outputdir, True)
 
 	# Source
 	elif sys.argv[1] == 'source':
@@ -193,8 +199,9 @@ def main():
 		sys.exit(1)
 	
 	# Delete temporary files on exit
-	if os.path.isdir(tempdir):
-		shutil.rmtree(tempdir)
+	if clean_temp:
+		if os.path.isdir(tempdir):
+			shutil.rmtree(tempdir)
 
 
 
@@ -203,43 +210,7 @@ def subscribe(repository_projectname, path, tempdir):
 	Subscribe to a project using the Application Manager. Waits for updates to the project and
 	analyses any checked deployments continually.
 	"""
-	def checkForUDs(path, tempdir):
-		import time
-		time.sleep(1) # We currently seem to have to give the metadata a little time to update inside the repository
-		uds = repository.checkedDeployments(path)
-
-		if(len(uds) > 0):
-			print(ANSI_GREEN + "Project has {} checked deployment{}...\n".format(
-				len(uds), "s" if len(uds) > 1 else "") + ANSI_END)
-
-			# Download the files
-			models = {} # This will tell local_mode which XML files are of which type
-
-			cns = repository.downloadAllFilesOfType("componentnetwork", path, tempdir)
-			if len(cns) != 1:
-				print(ANSI_RED + "Multiple files of type 'componentnetwork' \
-				found at path {} when only one was expected.".format(path) + ANSI_END)
-				sys.exit(1)
-			models['cn'] = os.path.join(tempdir, cns[0])
-
-			pds = repository.downloadAllFilesOfType("platformdescription", path, tempdir)
-			if len(pds) != 1:
-				print(ANSI_RED + "Multiple files of type 'platformdescription' \
-				found at path {} when only one was expected.".format(path) + ANSI_END)
-				sys.exit(1)
-			models['pd'] = os.path.join(tempdir, pds[0])
-			
-			deps = []
-			for dep in uds:
-				deps.extend([os.path.join(tempdir, dep['filename'])])
-				repository.downloadFile(os.path.join(path, dep['filename']), 
-					os.path.join(tempdir, dep['filename']), True, False)
-			models['de'] = deps
-
-			local_mode(tempdir, tempdir, path, models=models)
-
-	print(ANSI_GREEN + "Subscribing to folder {}/{} of project {}. Waiting for updates..."
-		.format(settings.repository_user_dir, path, repository_projectname) + ANSI_END)
+	print(ANSI_GREEN + "Subscribing to project {}. Waiting for updates...".format(repository_projectname) + ANSI_END)
 	
 	try:
 		ws = websocket.create_connection("ws://{}:{}".format(settings.app_manager_ip, settings.app_manager_port))
@@ -258,116 +229,68 @@ def subscribe(repository_projectname, path, tempdir):
 	except json.decoder.JSONDecodeError:
 		print(ANSI_RED + "Invalid response from Application Manager. Response: {}".format(result))
 		sys.exit(1)
-
-	# Run a first check regardless of response from the websocket
-	checkForUDs(path, tempdir)
+	
+	repository.websocketUpdateStatus("waiting", repository_projectname)
 
 	while True:
 		try:
 			result = ws.recv()
 			reply = json.loads(result)
-
+			
 			if 'project' in reply and reply['project'] == repository_projectname:
-				checkForUDs(path, tempdir)
+				if 'pt_code_analysis' in reply and 'status' in reply['pt_code_analysis']:
+					if reply['pt_code_analysis']['status'] == 'finished':
+						print("PT Code Analysis finished - Starting IP Core Generator\n")
+						repository.websocketUpdateStatus("started", repository_projectname)
+						repository.set_project(sys.argv[2])
+						repository.set_source(settings.repository_user_dir)
+						repository.downloadFiles(settings.repository_descriptions_dir, tempdir)
+						local_mode(tempdir, tempdir, False)
+						repository.websocketUpdateStatus("finished", repository_projectname)
+						print("Exiting IP Core Generator")
+						sys.exit(0)
+						
 		except json.decoder.JSONDecodeError:
 			print(ANSI_RED + "Invalid response from Application Manager. Response: {}".format(result))
 			sys.exit(1)
 
 
 
-def local_mode(inputdir, outputdir, uploadoncedone, models = None, localmode = False):
+def local_mode(inputdir, outputdir, localmode = False):
 	"""
-	Read the model from inputdir, creating all output files into outputdir.
-	If uploadoncedone, then the metadata in the repository is updated for each
-	deployment tested according to the result.
-
-	models should be a dictionary of the form:
-	{ 'cn': 'filename.xml', 'pd': 'filename.xml', ['de': 'filename.xml'] }
-	Otherwise the input directory will be searched for files that start with 'cn', 'pd', and 'de' respectively and will
-	fail if they are not found, and apart from deployments, unique.
-	
-	If multiple deployments are found/specified they are all tested.
+	Read the Component Network from inputdir, creating all output files into outputdir.
 
 	inputdir and outputdir can be the same location.
 	"""
 
-	if models == None:
-		models = find_input_models(inputdir)
-		if len(models['de']) > 0:
-			print(ANSI_CYAN + "Found {} deployments to process.\n".format(
-				len(models['de']), "s" if len(models['de']) > 1 else "") + ANSI_END)
+	if os.path.isfile(os.path.join(inputdir,settings.cn_name)): 
+		# Prepare output directory
+		os.makedirs(outputdir, exist_ok=True)
 
-	#Prepare output directory
-	os.makedirs(outputdir, exist_ok=True)
+		# Run IP Core Generator
+		print(ANSI_YELLOW + "\nProcessing Component Network: {} ".format(os.path.basename(settings.cn_name)) + ANSI_END)
+		ipcore_generator(os.path.join(inputdir,settings.cn_name), inputdir, outputdir, localmode)
 
-	#Now run an analysis for each deployment
-	for dep in models['de']:
-		print(ANSI_YELLOW + "Processing model: {} {} {}".format(os.path.basename(models['cn']),
-			os.path.basename(models['pd']),	os.path.basename(dep)) + ANSI_END)
-		#summarise_deployment(dep)
-		ipcore_generator(models['cn'], inputdir, outputdir, localmode)
+	else:
+		print(ANSI_RED + "\nComponent Network not found." + ANSI_END)
 
-	if len(models) == 0:
-		print(ANSI_RED + "No valid deployments found." + ANSI_END)
-
-
-
-def find_input_models(inputdir):
-	'''
-	Determine input models as:
-	{
-		'cn': <inputdir>cn*.xml,
-		'pd': <inputdir>pd*.xml,
-		['de': <inputdir>de*.xml]
-	}
-	'''
-	def deglob_input_models(pattern):
-		'''
-		Turn the provided pattern into an absolute filename. Also checks that the de-globbing is unique and
-		outputs an error and exits if not.
-		'''
-		results = glob.glob(pattern)
-		if(len(results) != 1):
-			print("The pattern {} does not refer to a unique file.".format(pattern))
-			sys.exit(1)
-		else:
-			return results[0]
-
-	models = {
-		'cn': deglob_input_models("{}cn*.xml".format(inputdir)),
-		'pd': deglob_input_models("{}pd*.xml".format(inputdir))
-	}
-
-	models['de'] = glob.glob("{}de*.xml".format(inputdir))
-
-	if len(models['de']) < 1:
-		print("Cannot find deployments in project {}".format(repository.get_project()))
-		sys.exit(1)
-	return models
-
-
-
-def summarise_deployment(filename):
-	print(ANSI_MAGENTA + "Mappings:")
-	doc = expatbuilder.parse(filename, False)
-	mappings = doc.getElementsByTagName('mapping')
-	for m in mappings:
-		comp = m.getElementsByTagName('component')
-		proc = m.getElementsByTagName('processor')
-		if len(comp) == 1 and len(proc) == 1:
-			print("\t{} -> {}".format(comp[0].getAttribute('name'), proc[0].getAttribute('name')))
-	print(ANSI_END)
 	
 	
-	
-def source_mode(srcdir, srcfile, headerfile, top_function, solution_name, outputdir):
+def source_mode(srcdir, src_file, header_file, top_function, solution_name, outputdir):
 	ipcore_zip = os.path.join(generated_ipcore_dir, "{}.zip".format(solution_name))
 	drivers_dir = os.path.join(generated_ipcore_dir, solution_name , "impl", "ip", "drivers", top_function+"_top_v1_0", "src")
 	os.makedirs(generated_src_dir, exist_ok=True)
 	copytree(srcdir, generated_src_dir)
 	
+	# IP Core Generator Start
+	print(ANSI_CYAN + "\nPHANTOM IP CORE GENERATOR" + ANSI_END)
+	print(ANSI_BLUE + "\tSolution: \t"     + ANSI_END + solution_name)
+	print(ANSI_BLUE + "\tTop function: \t" + ANSI_END + top_function)
+	print(ANSI_BLUE + "\tSource File: \t"  + ANSI_END + src_file)
+	print(ANSI_BLUE + "\tHeader File: \t"  + ANSI_END + header_file)
+	
 	# Transform source code, generate IP Core and create modified software component
-	exitcode = generateIPcore(generated_src_dir, srcfile, headerfile, top_function, solution_name)
+	exitcode = generateIPcore(generated_src_dir, src_file, header_file, top_function, solution_name)
 	
 	if exitcode == 0:
 		# ZIP IP Core
@@ -392,12 +315,13 @@ def source_mode(srcdir, srcfile, headerfile, top_function, solution_name, output
 		print(ANSI_RED + "\nIP Core Generation Failed - exitcode: {}".format(exitcode) + ANSI_END)
 		
 	# Delete Temporary Files
-	if os.path.isdir(generated_ipcore_dir):
-		shutil.rmtree(generated_ipcore_dir)
-	if os.path.isdir(generated_src_dir):
-		shutil.rmtree(generated_src_dir)	
-	if os.path.isdir(tempdir):
-		shutil.rmtree(tempdir)
+	if clean_temp:
+		if os.path.isdir(generated_ipcore_dir):
+			shutil.rmtree(generated_ipcore_dir)
+		if os.path.isdir(generated_src_dir):
+			shutil.rmtree(generated_src_dir)	
+		if os.path.isdir(tempdir):
+			shutil.rmtree(tempdir)
 
 
 
@@ -411,8 +335,9 @@ def ipcore_generator(componentNetwork, inputdir, outputdir, localmode):
 		src_file = os.path.relpath(os.path.join(tmpdir,"{}.cpp".format(fpga_component)),generated_src_dir)
 		header_file = os.path.relpath(os.path.join(tmpdir,"{}.h".format(fpga_component)),generated_src_dir)
         
-		timestamp = int(time.time())
-		solution_name = "{}-{}".format(top_function, timestamp)
+		#timestamp = int(time.time())
+		#solution_name = "{}-{}".format(top_function, timestamp)
+		solution_name = top_function
 
 		# IP Core Generator Start
 		print(ANSI_CYAN + "\nPHANTOM IP CORE GENERATOR" + ANSI_END)
@@ -452,10 +377,11 @@ def ipcore_generator(componentNetwork, inputdir, outputdir, localmode):
 				copy(componentNetwork, outputdir)
 			else:
 				print(ANSI_CYAN + "\nUploading files to Repository..." + ANSI_END)
+				repository.set_source(repository_ipcoregen_source)
 				repository.uploadIPCoreZip(ipcore_zip, solution_name, "zip", top_function)
 				repository.uploadDir(generated_src_dir, solution_name, "cpp")
 				repository.uploadDir(drivers_dir, os.path.join(solution_name, "drivers"))
-				repository.set_source(settings.repository_user_dir)
+				#repository.set_source(settings.repository_user_dir)
 				repository.uploadFile(componentNetwork, settings.repository_descriptions_dir, "componentnetwork")
 
 			print(ANSI_GREEN + "\nFinished" + ANSI_END)
@@ -464,13 +390,14 @@ def ipcore_generator(componentNetwork, inputdir, outputdir, localmode):
 
 	# Delete Temporary Files
 	repository.set_source(settings.repository_user_dir)
-	if os.path.isdir(generated_ipcore_dir):
-		shutil.rmtree(generated_ipcore_dir)
-	if os.path.isdir(generated_src_dir):
-		shutil.rmtree(generated_src_dir)	
-	if os.path.isdir(tempdir):
-		shutil.rmtree(tempdir)
-	os.mkdir(tempdir)
+	if clean_temp:
+		if os.path.isdir(generated_ipcore_dir):
+			shutil.rmtree(generated_ipcore_dir)
+		if os.path.isdir(generated_src_dir):
+			shutil.rmtree(generated_src_dir)	
+		if os.path.isdir(tempdir):
+			shutil.rmtree(tempdir)
+		os.mkdir(tempdir)
 
 
 

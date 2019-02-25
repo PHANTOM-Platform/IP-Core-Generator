@@ -62,6 +62,46 @@ def websocketUpdate(headers, project):
 	if rv.status_code != 200 and rv.status_code != 420:
 		print("Could not update task. Status code: {}\n{}".format(rv.status_code, rv.text))
 		sys.exit(1)
+		
+		
+		
+def websocketUpdateStatus(status, project):
+	"""
+	Ping an update to the Application Manager for the project
+	"""
+	token = authenticate()
+	
+	headers = {'Authorization': "OAuth {}".format(token)}
+	
+	uploadjson = "{{\"project\": \"{}\", \"ip_core_generator\":{{\"status\":\"{}\"}} }}".format(project, status)
+	
+	url = "http://{}:{}/update_project_tasks".format(settings.app_manager_ip, settings.app_manager_port)
+
+	rv = requests.post(url, files={'UploadJSON': uploadjson}, headers=headers)
+
+	if rv.status_code != 200 and rv.status_code != 420:
+		print("Could not update task. Status code: {}\n{}".format(rv.status_code, rv.text))
+		sys.exit(1)
+	
+	websocketFlush(project)	
+
+
+
+def websocketFlush(project):
+	"""
+	Flush the Application Manager updates for the project
+	"""
+	token = authenticate()
+	
+	headers = {'Authorization': "OAuth {}".format(token)}
+	
+	url = "http://{}:{}/_flush".format(settings.app_manager_ip, settings.app_manager_port)
+
+	rv = requests.get(url, files={}, headers=headers)
+
+	if rv.status_code != 200 and rv.status_code != 420:
+		print("Could not update task. Status code: {}\n{}".format(rv.status_code, rv.text))
+		sys.exit(1)
 
 
 
