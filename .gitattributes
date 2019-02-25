@@ -1,1 +1,2 @@
 ipcore-rewriter filter=lfs diff=lfs merge=lfs -text
+ipcore-arm-adapter filter=lfs diff=lfs merge=lfs -text

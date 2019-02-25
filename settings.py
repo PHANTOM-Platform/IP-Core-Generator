@@ -16,8 +16,19 @@ app_manager_port = 8500
 repository_user = "miguel.costa@unparallel.pt"
 repository_pass = "12345"
 
+
+# Set the name of the Users directories (source files and descriptions) 
 repository_user_dir = "user"
 repository_descriptions_dir = "descriptions"
+
+
+# Component Network Name
+cn_name = "cn.xml"
+
+
+# Platform Description Name
+pd_name = "pd.xml"
+
 
 # Set the target FPGA device - ZC706 = xc7z045ffg900-2
 target_fpga = "xc7z045ffg900-2"

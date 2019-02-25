@@ -1,4 +1,4 @@
-import requests, os, sys, json, io
+import requests, os, sys, json, io, pathlib
 import settings
 
 ANSI_RED = "\033[1;31m"; ANSI_GREEN = "\033[1;32m";  ANSI_BLUE = "\033[1;34m"; ANSI_END = "\033[0;0m";
@@ -34,11 +34,18 @@ def set_project(projectname):
 	global repository_projectname
 	repository_projectname = projectname
 
+def get_project():
+	global repository_projectname
+	return repository_projectname
 
 
 def set_source(source):
 	global repository_source
 	repository_source = source
+
+def get_source():
+	global repository_source
+	return repository_source
 
 
 
@@ -169,10 +176,14 @@ def upload(filetoupload, filename, destpath, data_type, checked, websocket_updat
 		settings.repository_ip, settings.repository_port, repository_projectname, repository_source, filename, destpath)
 	
 	headers = {'Authorization': "OAuth {}".format(token)}
-
-	uploadjson = "{{\"project\": \"{}\", \"source\": \"{}\", \"data_type\": \"{}\", \"checked\": \"{}\"}}"\
-		.format(repository_projectname, repository_source, data_type, checked)
-
+	
+	if checked is None:
+		uploadjson = "{{\"project\": \"{}\", \"source\": \"{}\", \"data_type\": \"{}\"}}"\
+			.format(repository_projectname, repository_source, data_type)
+	else:
+		uploadjson = "{{\"project\": \"{}\", \"source\": \"{}\", \"data_type\": \"{}\", \"checked\": \"{}\"}}"\
+			.format(repository_projectname, repository_source, data_type, checked)
+		
 	files = {
 		'UploadFile': filetoupload,
 		'UploadJSON': uploadjson
@@ -189,7 +200,7 @@ def upload(filetoupload, filename, destpath, data_type, checked, websocket_updat
 
 
 
-def uploadFile(filetoupload, destpath, data_type, checked, websocket_update=True):
+def uploadFile(filetoupload, destpath, data_type, checked=None, websocket_update=True):
 	"""
 	Upload the given file to the repository. "filetoupload" must be a path to a valid file.
 	"""
@@ -198,6 +209,26 @@ def uploadFile(filetoupload, destpath, data_type, checked, websocket_update=True
 		sys.exit(1)
 	filename = os.path.basename(filetoupload)
 	return upload(open(filetoupload, 'rb'), filename, destpath, data_type, checked, websocket_update)
+
+
+
+def uploadDir(dirtoupload, destpath, checked=None, websocket_update=True):
+	"""
+	Upload the given directory, files and subfolders to the repository. "dirtoupload" must be a path to a valid directory.
+	"""
+	def files(path): 
+		for root, directories, filenames in os.walk(path):
+			for filename in filenames:
+				yield os.path.relpath(os.path.join(root, filename), path)
+	
+	for file in files(dirtoupload):
+		filepath = os.path.join(dirtoupload, file)
+		if os.path.isfile(filepath): 
+			relpath, filename = os.path.split(file)
+			upload(open(filepath, 'rb'), filename, os.path.join(destpath, relpath), 
+				"".join(pathlib.Path(file).suffixes), checked, websocket_update)
+		else:
+			print("{} is not a valid file.".format(filepath))
 
 
 

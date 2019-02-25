@@ -1,5 +1,7 @@
 # PHANTOM
 _tmp
+generated-src
+generated-ipcores
 
 # OSX
 .DS_Store

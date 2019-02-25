@@ -12,6 +12,7 @@ open_project generated-ipcores -reset
 # Add files to project
 for { set a 3}  {$a < [lindex $argc]} {incr a} {
    add_files [lindex $argv $a]
+   #add_files <file>.cpp -cflags "-I<include_dir>"
 }
 
 
