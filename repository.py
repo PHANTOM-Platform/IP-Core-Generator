@@ -65,7 +65,7 @@ def websocketUpdate(headers, project):
 		
 		
 		
-def websocketUpdateStatus(status, project):
+def websocketUpdateStatus(project, source, status):
 	"""
 	Ping an update to the Application Manager for the project
 	"""
@@ -73,7 +73,7 @@ def websocketUpdateStatus(status, project):
 	
 	headers = {'Authorization': "OAuth {}".format(token)}
 	
-	uploadjson = "{{\"project\": \"{}\", \"ip_core_generator\":{{\"status\":\"{}\"}} }}".format(project, status)
+	uploadjson = "{{\"project\": \"{}\", \"{}\":{{\"status\":\"{}\"}} }}".format(project, source, status)
 	
 	url = "http://{}:{}/update_project_tasks".format(settings.app_manager_ip, settings.app_manager_port)
 
@@ -83,7 +83,7 @@ def websocketUpdateStatus(status, project):
 		print("Could not update task. Status code: {}\n{}".format(rv.status_code, rv.text))
 		sys.exit(1)
 	
-	websocketFlush(project)	
+	websocketFlush(project)
 
 
 

@@ -16,7 +16,7 @@ generated_ipcore_dir = "generated-ipcores"
 generated_src_dir = "generated-src"
 
 # Automatically clean temporary files
-clean_temp = True;
+clean_temp = False;
 
 
 
@@ -69,7 +69,7 @@ def main():
 			sys.exit(1)
 
 		repository.set_project(sys.argv[2])
-		repository.set_source(settings.repository_user_dir)
+		repository.set_source(settings.repository_pt_dir)
 		repository.downloadFiles(settings.repository_descriptions_dir, tempdir)
 		local_mode(tempdir, tempdir, False)
 
@@ -192,6 +192,8 @@ def main():
 			shutil.rmtree(generated_ipcore_dir)
 		if os.path.isdir(generated_src_dir):
 			shutil.rmtree(generated_src_dir)
+		if os.path.isdir('__pycache__'):
+			shutil.rmtree('__pycache__')
 
 	else:
 		print("Invalid mode.")
@@ -230,7 +232,10 @@ def subscribe(repository_projectname, path, tempdir):
 		print(ANSI_RED + "Invalid response from Application Manager. Response: {}".format(result))
 		sys.exit(1)
 	
-	repository.websocketUpdateStatus("waiting", repository_projectname)
+	repository.websocketUpdateStatus(repository_projectname, "ip_core_generator", "waiting")
+	
+	# For testing purposes
+	#repository.websocketUpdateStatus(repository_projectname, "pt_code_analysis", "finished")
 
 	while True:
 		try:
@@ -241,12 +246,12 @@ def subscribe(repository_projectname, path, tempdir):
 				if 'pt_code_analysis' in reply and 'status' in reply['pt_code_analysis']:
 					if reply['pt_code_analysis']['status'] == 'finished':
 						print("PT Code Analysis finished - Starting IP Core Generator\n")
-						repository.websocketUpdateStatus("started", repository_projectname)
+						repository.websocketUpdateStatus(repository_projectname, "ip_core_generator", "started")
 						repository.set_project(sys.argv[2])
-						repository.set_source(settings.repository_user_dir)
+						repository.set_source(settings.repository_pt_dir)
 						repository.downloadFiles(settings.repository_descriptions_dir, tempdir)
 						local_mode(tempdir, tempdir, False)
-						repository.websocketUpdateStatus("finished", repository_projectname)
+						repository.websocketUpdateStatus(repository_projectname, "ip_core_generator", "finished")
 						print("Exiting IP Core Generator")
 						sys.exit(0)
 						
@@ -277,8 +282,6 @@ def local_mode(inputdir, outputdir, localmode = False):
 	
 	
 def source_mode(srcdir, src_file, header_file, top_function, solution_name, outputdir):
-	ipcore_zip = os.path.join(generated_ipcore_dir, "{}.zip".format(solution_name))
-	drivers_dir = os.path.join(generated_ipcore_dir, solution_name , "impl", "ip", "drivers", top_function+"_top_v1_0", "src")
 	os.makedirs(generated_src_dir, exist_ok=True)
 	copytree(srcdir, generated_src_dir)
 	
@@ -309,7 +312,7 @@ def source_mode(srcdir, src_file, header_file, top_function, solution_name, outp
 		os.makedirs(os.path.join(outputdir, solution_name, "drivers"), exist_ok=True)
 		copy(ipcore_zip, os.path.join(outputdir, solution_name))
 		copytree(generated_src_dir, os.path.join(outputdir, solution_name))
-		copytree(drivers_dir, os.path.join(outputdir, solution_name, "drivers"))	
+		copytree(drivers_dir, os.path.join(outputdir, os.path.relpath(tmpdir, generated_src_dir), solution_name, "drivers"))	
 		print(ANSI_GREEN + "\nFinished" + ANSI_END)
 	else:
 		print(ANSI_RED + "\nIP Core Generation Failed - exitcode: {}".format(exitcode) + ANSI_END)
@@ -329,7 +332,7 @@ def ipcore_generator(componentNetwork, inputdir, outputdir, localmode):
 	# Parse Deployment Plan and Component Network
 	for fpga_component in getFPGAcomponentsFromCN(componentNetwork):
 		tmpdir = getfilesfromCN(componentNetwork, fpga_component, localmode, inputdir)
-        
+
         #TODO Not be the best way to get the file names
 		top_function = "{}".format(fpga_component)
 		src_file = os.path.relpath(os.path.join(tmpdir,"{}.cpp".format(fpga_component)),generated_src_dir)
@@ -364,8 +367,8 @@ def ipcore_generator(componentNetwork, inputdir, outputdir, localmode):
 				 top_function+"_top_v1_0", "src")
 
 			# Add new implementation to Component Network
-			files = [generated_src_dir, drivers_dir, ipcore_zip]
-			cn = addfilestoCN(componentNetwork, fpga_component, files, solution_name)
+			files = [tmpdir, drivers_dir, ipcore_zip]
+			addfilestoCN(componentNetwork, fpga_component, files, solution_name)
 
 			# Upload to Repository or save locally
 			if localmode == True:
@@ -380,7 +383,7 @@ def ipcore_generator(componentNetwork, inputdir, outputdir, localmode):
 				repository.set_source(repository_ipcoregen_source)
 				repository.uploadIPCoreZip(ipcore_zip, solution_name, "zip", top_function)
 				repository.uploadDir(generated_src_dir, solution_name, "cpp")
-				repository.uploadDir(drivers_dir, os.path.join(solution_name, "drivers"))
+				repository.uploadDir(drivers_dir, os.path.join(solution_name, os.path.relpath(tmpdir, generated_src_dir), "drivers"))
 				#repository.set_source(settings.repository_user_dir)
 				repository.uploadFile(componentNetwork, settings.repository_descriptions_dir, "componentnetwork")
 
@@ -389,7 +392,6 @@ def ipcore_generator(componentNetwork, inputdir, outputdir, localmode):
 			print(ANSI_RED + "\nIP Core Generation Failed - exitcode: {}".format(exitcode) + ANSI_END)
 
 	# Delete Temporary Files
-	repository.set_source(settings.repository_user_dir)
 	if clean_temp:
 		if os.path.isdir(generated_ipcore_dir):
 			shutil.rmtree(generated_ipcore_dir)
@@ -493,16 +495,13 @@ def getFPGAcomponentsFromCN(componentNetwork):
 # Parse Component Network and get files for the specified component
 def getfilesfromCN(componentNetwork, fpga_component, localmode, inputdir):
 	cn = expatbuilder.parse(componentNetwork, False)
-	components = cn.getElementsByTagName('component')
-
 	directories = []
-	for component in components:
+	
+	for component in cn.getElementsByTagName('component'):
 		if component.getAttribute('name') == fpga_component:
-			implementations = component.getElementsByTagName('implementation')
-			for implementation in implementations:
+			for implementation in component.getElementsByTagName('implementation'):
 				if implementation.getAttribute('id') == "1":
-					source_files = implementation.getElementsByTagName('source')
-					for source_file in source_files:
+					for source_file in implementation.getElementsByTagName('source'):
 						if source_file.getAttribute('path') not in directories:
 							directories.append(source_file.getAttribute('path'))
 	
@@ -527,33 +526,51 @@ def getfilesfromCN(componentNetwork, fpga_component, localmode, inputdir):
 
 
 # Add new files to Component Network
-def addfilestoCN(componentNetwork, fpga_component, files, path):
-	cn = expatbuilder.parse(componentNetwork, False)
-
+def addfilestoCN(componentNetwork, fpga_component, files, solution_name):
+	cn = expatbuilder.parse(componentNetwork, False)	
+	implementation_number = 0
+	
 	for component in cn.getElementsByTagName('component'):
 		if component.getAttribute('name') == fpga_component:
+			for implementation in component.getElementsByTagName('implementation'):
+				if int(implementation.getAttribute('id')) > implementation_number:
+					implementation_number = int(implementation.getAttribute('id'))
+					
 			newimpl = cn.createElement("implementation")
 			newimpl.setAttribute("target", "fpga")
-			newimpl.setAttribute("id", "3")
+			newimpl.setAttribute("id", str(implementation_number+1))
 			
 			# Modified component files
-			relpath, filename = os.path.split(files[0])
-			newsrc = cn.createElement("source")
-			newsrc.setAttribute("file", filename)
-			newsrc.setAttribute("lang", "".join(pathlib.Path(files[0]).suffixes))
-			newsrc.setAttribute("path", path)
-			newimpl.appendChild(newsrc)
-
+			for root, directories, filenames in os.walk(files[0]):
+				for filename in filenames:
+					filepath = os.path.join(files[0], filename)
+					filetype = "".join(pathlib.Path(filename).suffixes)[1:]
+					if os.path.isfile(filepath):
+						if filetype != "" and filetype != "h":
+							relpath, filename = os.path.split(filepath)
+							newsrc = cn.createElement("source")
+							newsrc.setAttribute("file", filename)
+							newsrc.setAttribute("lang", filetype)
+							newsrc.setAttribute("path", os.path.join(repository_ipcoregen_source, solution_name,
+								os.path.relpath(files[0], generated_src_dir)))
+							newimpl.appendChild(newsrc)
+					else:
+						print("{} is not a valid file.".format(filepath))
+			
+			# Xilinx Autogenerated drivers
 			for root, directories, filenames in os.walk(files[1]):
 				for filename in filenames:
 					filepath = os.path.join(files[1], filename)
-					if os.path.isfile(filepath): 
-						relpath, filename = os.path.split(filepath)
-						newsrc = cn.createElement("source")
-						newsrc.setAttribute("file", filename)
-						newsrc.setAttribute("lang", "".join(pathlib.Path(filename).suffixes)[1:])
-						newsrc.setAttribute("path", os.path.join(path, "drivers"))
-						newimpl.appendChild(newsrc)
+					filetype = "".join(pathlib.Path(filename).suffixes)[1:]
+					if os.path.isfile(filepath):
+						if filetype != "" and filetype != "h":
+							relpath, filename = os.path.split(filepath)
+							newsrc = cn.createElement("source")
+							newsrc.setAttribute("file", filename)
+							newsrc.setAttribute("lang", filetype)
+							newsrc.setAttribute("path", os.path.join(repository_ipcoregen_source, solution_name,
+								os.path.relpath(files[0], generated_src_dir), 'drivers'))
+							newimpl.appendChild(newsrc)
 					else:
 						print("{} is not a valid file.".format(filepath))
 			
@@ -562,7 +579,7 @@ def addfilestoCN(componentNetwork, fpga_component, files, path):
 			newsrc = cn.createElement("source")
 			newsrc.setAttribute("file", filename)
 			newsrc.setAttribute("lang", "ipcore")
-			newsrc.setAttribute("path", path)
+			newsrc.setAttribute("path", os.path.join(repository_ipcoregen_source, solution_name))
 			newimpl.appendChild(newsrc)
 			
 			# Write XML
@@ -572,7 +589,6 @@ def addfilestoCN(componentNetwork, fpga_component, files, path):
 			f = open(componentNetwork, "w+")
 			cn.writexml(f, "", "\t", "\n")
 			f.close()
-	return cn
 
 
 

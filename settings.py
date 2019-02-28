@@ -17,17 +17,17 @@ repository_user = "miguel.costa@unparallel.pt"
 repository_pass = "12345"
 
 
-# Set the name of the Users directories (source files and descriptions) 
+# Set the name of the User/Developer directory
 repository_user_dir = "user"
+
+
+# Set the name of the PT Code Analysis directory to get the Component Network
+repository_pt_dir = "pt_code_analysis"
 repository_descriptions_dir = "descriptions"
 
 
 # Component Network Name
 cn_name = "cn.xml"
-
-
-# Platform Description Name
-pd_name = "pd.xml"
 
 
 # Set the target FPGA device - ZC706 = xc7z045ffg900-2
