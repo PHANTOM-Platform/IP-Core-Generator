@@ -16,7 +16,7 @@ generated_ipcore_dir = "generated-ipcores"
 generated_src_dir = "generated-src"
 
 # Automatically clean temporary files
-clean_temp = False;
+clean_temp = True;
 
 
 
@@ -86,27 +86,26 @@ def main():
 			sys.exit(1)
 		inputdir = repository.enforce_trailing_slash(sys.argv[2])
 		outputdir = repository.enforce_trailing_slash(sys.argv[3])
-		local_mode(inputdir, outputdir, True)
+		copytree(inputdir, tempdir)
+		local_mode(tempdir, outputdir, True)
 
 	# Source
 	elif sys.argv[1] == 'source':
 		"""
 		Run the IP Core Generator on local source files
 		Arguments:
-			[2] - path to folder to analyse
-			[3] - source filename
-			[4] - header filename
-			[5] - top function name
-			[6] - solution name
-			[7] - output directory
+			[2] - source filename
+			[3] - header filename
+			[4] - top function name
+			[5] - output directory
 		"""
-		if len(sys.argv) < 8:
-			print("Usage: {} source <source-dir> <source-filename> <header-filename> <top-funtion> <solution-name> <output-dir>"
+		if len(sys.argv) < 6:
+			print("Usage: {} source <source-file> <header-file> <top-funtion> <output-dir>"
 				.format(sys.argv[0]))
 			sys.exit(1)
-		srcdir = repository.enforce_trailing_slash(sys.argv[2])
-		outputdir = repository.enforce_trailing_slash(sys.argv[7])
-		source_mode(srcdir, sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], outputdir)
+		srcdir = repository.enforce_trailing_slash(os.path.relpath(os.path.dirname(sys.argv[2])))
+		outputdir = repository.enforce_trailing_slash(os.path.relpath(sys.argv[5]))
+		source_mode(srcdir, os.path.basename(sys.argv[2]), os.path.basename(sys.argv[3]), sys.argv[4], sys.argv[4], outputdir)
 
 	# Upload
 	elif sys.argv[1] == 'upload':
@@ -235,7 +234,7 @@ def subscribe(repository_projectname, path, tempdir):
 	repository.websocketUpdateStatus(repository_projectname, "ip_core_generator", "waiting")
 	
 	# For testing purposes
-	#repository.websocketUpdateStatus(repository_projectname, "pt_code_analysis", "finished")
+	repository.websocketUpdateStatus(repository_projectname, "pt_code_analysis", "finished")
 
 	while True:
 		try:
@@ -285,13 +284,6 @@ def source_mode(srcdir, src_file, header_file, top_function, solution_name, outp
 	os.makedirs(generated_src_dir, exist_ok=True)
 	copytree(srcdir, generated_src_dir)
 	
-	# IP Core Generator Start
-	print(ANSI_CYAN + "\nPHANTOM IP CORE GENERATOR" + ANSI_END)
-	print(ANSI_BLUE + "\tSolution: \t"     + ANSI_END + solution_name)
-	print(ANSI_BLUE + "\tTop function: \t" + ANSI_END + top_function)
-	print(ANSI_BLUE + "\tSource File: \t"  + ANSI_END + src_file)
-	print(ANSI_BLUE + "\tHeader File: \t"  + ANSI_END + header_file)
-	
 	# Transform source code, generate IP Core and create modified software component
 	exitcode = generateIPcore(generated_src_dir, src_file, header_file, top_function, solution_name)
 	
@@ -309,10 +301,9 @@ def source_mode(srcdir, src_file, header_file, top_function, solution_name, outp
 
 		# save Outputs
 		print(ANSI_CYAN + "\nSaving files to output dir..." + ANSI_END)
-		os.makedirs(os.path.join(outputdir, solution_name, "drivers"), exist_ok=True)
 		copy(ipcore_zip, os.path.join(outputdir, solution_name))
 		copytree(generated_src_dir, os.path.join(outputdir, solution_name))
-		copytree(drivers_dir, os.path.join(outputdir, os.path.relpath(tmpdir, generated_src_dir), solution_name, "drivers"))	
+		copytree(drivers_dir, os.path.join(outputdir, solution_name, "drivers"))
 		print(ANSI_GREEN + "\nFinished" + ANSI_END)
 	else:
 		print(ANSI_RED + "\nIP Core Generation Failed - exitcode: {}".format(exitcode) + ANSI_END)
@@ -342,13 +333,6 @@ def ipcore_generator(componentNetwork, inputdir, outputdir, localmode):
 		#solution_name = "{}-{}".format(top_function, timestamp)
 		solution_name = top_function
 
-		# IP Core Generator Start
-		print(ANSI_CYAN + "\nPHANTOM IP CORE GENERATOR" + ANSI_END)
-		print(ANSI_BLUE + "\tSolution: \t"     + ANSI_END + solution_name)
-		print(ANSI_BLUE + "\tTop function: \t" + ANSI_END + top_function)
-		print(ANSI_BLUE + "\tSource File: \t"  + ANSI_END + src_file)
-		print(ANSI_BLUE + "\tHeader File: \t"  + ANSI_END + header_file)
-
 		os.makedirs(generated_src_dir, exist_ok=True)
 		
 		# Transform source code, generate IP Core and create modified software component
@@ -373,10 +357,9 @@ def ipcore_generator(componentNetwork, inputdir, outputdir, localmode):
 			# Upload to Repository or save locally
 			if localmode == True:
 				print(ANSI_CYAN + "\nSaving files to output dir..." + ANSI_END)
-				os.makedirs(os.path.join(outputdir, solution_name, "drivers"), exist_ok=True)
 				copy(ipcore_zip,os.path.join(outputdir, solution_name))
 				copytree(generated_src_dir, os.path.join(outputdir, solution_name))
-				copytree(drivers_dir, os.path.join(outputdir, solution_name, "drivers"))
+				copytree(drivers_dir, os.path.join(outputdir, solution_name, os.path.relpath(tmpdir, generated_src_dir), "drivers"))
 				copy(componentNetwork, outputdir)
 			else:
 				print(ANSI_CYAN + "\nUploading files to Repository..." + ANSI_END)
@@ -403,7 +386,14 @@ def ipcore_generator(componentNetwork, inputdir, outputdir, localmode):
 
 
 
-def generateIPcore(srcdir, srcfile, headerfile, topfunction, solution_name):
+def generateIPcore(srcdir, srcfile, headerfile, top_function, solution_name):
+	# IP Core Generator Start
+	print(ANSI_CYAN + "\nPHANTOM IP CORE GENERATOR" + ANSI_END)
+	print(ANSI_BLUE + "\tSolution: \t"     + ANSI_END + solution_name)
+	print(ANSI_BLUE + "\tTop function: \t" + ANSI_END + top_function)
+	print(ANSI_BLUE + "\tSource File: \t"  + ANSI_END + srcfile)
+	print(ANSI_BLUE + "\tHeader File: \t"  + ANSI_END + headerfile)
+		
 	# Tranform source code
 	print(ANSI_CYAN + "\nTransforming source code..." + ANSI_END)
 	transformed_src = os.path.join(os.path.abspath(srcdir), srcfile)
@@ -417,7 +407,7 @@ def generateIPcore(srcdir, srcfile, headerfile, topfunction, solution_name):
 	# Generate IP Core
 	print(ANSI_CYAN + "\nGenerating IP Core..." + ANSI_END)
 	exitcode = os.system("vivado_hls script.tcl -tclargs {} {} {} {} {}".format(settings.target_fpga, 
-		solution_name, topfunction, transformed_src_ip, os.path.join(srcdir, headerfile)))
+		solution_name, top_function, transformed_src_ip, os.path.join(srcdir, headerfile)))
 		
 	os.remove(transformed_src_ip)
 
@@ -614,7 +604,7 @@ def copytree(src, dst, symlinks=False, ignore=None):
 			s = os.path.join(src, item)
 			d = os.path.join(dst, item)
 			if os.path.isdir(s):
-				shutil.copytree(s, d, symlinks, ignore)
+				copytree(s, d, symlinks, ignore)
 			else:
 				shutil.copy2(s, d)
 		
