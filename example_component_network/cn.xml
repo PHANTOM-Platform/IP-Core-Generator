@@ -7,17 +7,32 @@
     <requirements set-by="USER" name="componentA_requirements" target="ComponentA">
 		<non-functional name="Simons_WCET" type="execution-time" max-value="500" measurement-unit="ns"/>
 	</requirements>
+	
+	
+    <devices CPU="yes" GPU="no" FPGA="no"/>
 
 </component>
 
 
-<component name="ComponentB" type="asynchronous">
+<component name="euler" type="asynchronous">
     <MBT-estimated-computation-time value="80" measurement-unit="ns"/>
     <MF-monitored-computation-time measurement-unit="ns" value="400"/>
 
     <requirements set-by="USER" name="componentA_requirements" target="ComponentB">
 		<non-functional name="Simons_WCET" type="execution-time" max-value="500" measurement-unit="ns"/>
-	</requirements>
+    </requirements>
+
+    <implementation id="1">
+        <source file="euler.cpp" lang="cpp" path="src/euler"/>
+    </implementation>
+
+    <implementation id="2">
+        <source file="euler.cpp" lang="cpp" path="..\src\components_cuda"/>
+	<source file="euler_cuda.cpp" lang="cpp" path="..\src\components_cuda"/>
+    </implementation>
+    
+    
+    <devices CPU="yes" GPU="yes" FPGA="yes"/>
 
 </component>
 
@@ -28,6 +43,9 @@
     <requirements set-by="USER" name="componentA_requirements" target="ComponentC">
 		<non-functional name="Simons_WCET" type="execution-time" max-value="500" measurement-unit="ns"/>
 	</requirements>
+	
+	
+    <devices CPU="yes" GPU="no" FPGA="no"/>
 
 </component>
 
