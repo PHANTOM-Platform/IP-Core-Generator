@@ -60,7 +60,21 @@ repository_user = "username"
 repository_pass = "password"
 ```
 
-Besides, IP addresses, ports and credentials, the only extra parameter that should be configured is the model of the target FPGA device, so the IP Core generator can target the correct hardware.
+The directory for the user/developer source files and the directory for the Component Network modified by the PT Code Analysis must also be provided, as well as the Component Network file name.
+
+```
+# Set the name of the User/Developer directory
+repository_user_dir = "user"
+
+# Set the name of the PT Code Analysis directory to get the Component Network
+repository_pt_dir = "pt_code_analysis"
+repository_descriptions_dir = "descriptions"
+
+# Component Network Name
+cn_name = "cn.xml"
+```
+
+Besides, IP addresses, ports, credentials and directories, the only extra parameter that should be configured is the model of the target FPGA device, so the IP Core generator can target the correct hardware.
 
 ```
 # Set the target FPGA device - ZC706 = xc7z045ffg900-2
@@ -83,8 +97,15 @@ If you do not want to subscribe using the Application Manager, you can trigger t
 
 `./ipcore-generator.py remote project-name`
 
-Finally, to avoid all dependencies on the Application Manager and Repository, you can simply run on a local PHANTOM project folder with the local command:
+To avoid all dependencies on the Application Manager and Repository, you can simply run on a local PHANTOM project folder with the local command:
 
 `./ipcore-generator.py local /path/to/project/folder/`
+
+Finally, the IP Core Generator can be run on a source code file without a Component Network or any other dependencies with source command:
+
+`./ipcore-generator.py source source-file header-file top-funtion output-dir`
+
+If the component doesn't have a header file an empty one can be provided to the tool.
+
 
 The outputs of the IP Core Generator (IP Core zip and modified component source code) will be stored in the ipcore-generator directory inside the project folder.
