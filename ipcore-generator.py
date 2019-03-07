@@ -232,9 +232,6 @@ def subscribe(repository_projectname, path, tempdir):
 		sys.exit(1)
 	
 	repository.websocketUpdateStatus(repository_projectname, "ip_core_generator", "waiting")
-	
-	# For testing purposes
-	repository.websocketUpdateStatus(repository_projectname, "pt_code_analysis", "finished")
 
 	while True:
 		try:
