@@ -1,0 +1,32 @@
+
+
+# Set the Repository IP address and port
+repository_ip = "#REPO_IP#"
+repository_port = #REPO_PORT#
+
+# Set the Application Manager websocket IP address and port
+app_manager_ip = "#APPMAN_IP#"
+app_manager_port = #APPMAN_PORT#
+
+
+# Set the credentials for the Repository and Application Manager
+repository_user = "#USER#"
+repository_pass = "#PWD#"
+
+
+# Set the name of the User/Developer directory
+repository_user_dir = "development"
+
+
+# Set the name of the PT Code Analysis directory to get the Component Network
+repository_pt_dir = "PT"
+repository_descriptions_dir = "description"
+
+
+# Component Network Name
+cn_name = "#COMPNETNAME#"
+
+
+# Set the target FPGA device - ZC706 = xc7z045ffg900-2
+target_fpga = "xc7z045ffg900-2"
+
