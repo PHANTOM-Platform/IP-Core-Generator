@@ -293,8 +293,13 @@ def source_mode(srcdir, src_file, header_file, top_function, solution_name, outp
 		print(ANSI_GREEN + "\nIP Core Generation Finished" + ANSI_END)
 
 		ipcore_zip = os.path.join(generated_ipcore_dir, "{}.zip".format(solution_name))
-		drivers_dir = os.path.join(generated_ipcore_dir, solution_name , "impl", "ip", "drivers",
-			 top_function+"_top_v1_0", "src")
+		drivers_dir = os.path.join(generated_ipcore_dir, solution_name , "impl", "ip", "drivers", top_function+"_v1_0", "src")
+		if not os.path.isdir(drivers_dir):
+			drivers_dir = os.path.join(generated_ipcore_dir, solution_name , "impl", "ip", "drivers", top_function+"_top_v1_0", "src")
+		if not os.path.isdir(drivers_dir):
+			drivers_dir = os.path.join(generated_ipcore_dir, solution_name , "impl", "ip", "drivers", top_function.lower()+"_v1_0", "src")
+		if not os.path.isdir(drivers_dir):
+			drivers_dir = os.path.join(generated_ipcore_dir, solution_name , "impl", "ip", "drivers", top_function.lower()+"_top_v1_0", "src")	 
 
 		# save Outputs
 		print(ANSI_CYAN + "\nSaving files to output dir..." + ANSI_END)
@@ -345,8 +350,13 @@ def ipcore_generator(componentNetwork, inputdir, outputdir, localmode):
 				print(ANSI_GREEN + "\nIP Core Generation Finished" + ANSI_END)
 
 				ipcore_zip = os.path.join(generated_ipcore_dir, "{}.zip".format(solution_name))
-				drivers_dir = os.path.join(generated_ipcore_dir, solution_name , "impl", "ip", "drivers",
-					 top_function+"_top_v1_0", "src")
+				drivers_dir = os.path.join(generated_ipcore_dir, solution_name , "impl", "ip", "drivers", top_function+"_v1_0", "src")
+				if not os.path.isdir(drivers_dir):
+					drivers_dir = os.path.join(generated_ipcore_dir, solution_name , "impl", "ip", "drivers", top_function+"_top_v1_0", "src")
+				if not os.path.isdir(drivers_dir):
+					drivers_dir = os.path.join(generated_ipcore_dir, solution_name , "impl", "ip", "drivers", top_function.lower()+"_v1_0", "src")
+				if not os.path.isdir(drivers_dir):
+					drivers_dir = os.path.join(generated_ipcore_dir, solution_name , "impl", "ip", "drivers", top_function.lower()+"_top_v1_0", "src")	
 
 				# Add new implementation to Component Network
 				files = [tmpdir, drivers_dir, ipcore_zip]
